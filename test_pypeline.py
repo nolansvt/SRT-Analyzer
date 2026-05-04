@@ -6,6 +6,7 @@ from utils.text_cleaning import normalize_text, strip_srt_tags, words
 from analysis.wer import compute_wer
 from analysis.srt_parser import srt_file_to_plain_text as to_text
 from config import config
+from analysis.comparator import compare_srt
 
 load_dotenv()
 
@@ -55,3 +56,13 @@ if wer_result.substitution_examples:
     print(f"  Ex sub : '{wer_result.substitution_examples[0][0]}' → '{wer_result.substitution_examples[0][1]}'")
 assert 0.0 <= wer_result.wer <= 1.0
 print("[WER] OK\n")
+
+# --- Comparateur + diff
+
+report = compare_srt(ref_content, hyp_content)
+
+print(f"[Comparateur] WER={report.wer_result.wer:.1%}")
+print(f"  Diff HTML ({len(report.diff_html)} chars) : {report.diff_html[:150]}...")
+assert "<span" in report.diff_html
+print("[Comparateur] OK\n")
+
