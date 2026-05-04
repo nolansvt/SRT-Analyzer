@@ -7,6 +7,7 @@ from analysis.wer import compute_wer
 from analysis.srt_parser import srt_file_to_plain_text as to_text
 from config import config
 from analysis.comparator import compare_srt
+from transcription.gladia_client import GladiaClient
 
 load_dotenv()
 
@@ -65,4 +66,19 @@ print(f"[Comparateur] WER={report.wer_result.wer:.1%}")
 print(f"  Diff HTML ({len(report.diff_html)} chars) : {report.diff_html[:150]}...")
 assert "<span" in report.diff_html
 print("[Comparateur] OK\n")
+
+# --- Gladia client
+
+MEDIA = "/Users/polaryse/Desktop/Nolan/260401_FlyingOffshore_episode_3.mp4"
+
+if config.GLADIA_API_KEY:
+    client = GladiaClient()
+    generated_srt = client.transcribe(MEDIA)
+    print(f"[Gladia] SRT généré ({len(generated_srt)} chars)")
+    print(f"  Début : {generated_srt[:200]}")
+    assert "-->" in generated_srt
+    print("[Gladia] OK\n")
+else:
+    generated_srt = None
+    print("[Gladia] SKIPPED (pas de GLADIA_API_KEY)\n")
 
