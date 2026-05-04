@@ -3,8 +3,9 @@ from analysis.srt_parser import parse_srt, srt_file_to_plain_text
 import os
 from dotenv import load_dotenv
 from utils.text_cleaning import normalize_text, strip_srt_tags, words
-
-
+from analysis.wer import compute_wer
+from analysis.srt_parser import srt_file_to_plain_text as to_text
+from config import config
 
 load_dotenv()
 
@@ -38,3 +39,19 @@ print(f"[Text cleaning] Mots   : {w}")
 print("[Text cleaning] OK\n")
 
 
+# --- WER 
+
+with open(config.REF_SRT, encoding="utf-8") as f:
+    ref_content = f.read()
+with open(config.HYP_SRT, encoding="utf-8") as f:
+    hyp_content = f.read()
+
+wer_result = compute_wer(to_text(ref_content), to_text(hyp_content))
+
+print(f"[WER] Mots ref={wer_result.ref_word_count}  Mots hyp={wer_result.hyp_word_count}")
+print(f"  WER={wer_result.wer:.1%}")
+print(f"  Sub={wer_result.substitutions}  Ins={wer_result.insertions}  Del={wer_result.deletions}")
+if wer_result.substitution_examples:
+    print(f"  Ex sub : '{wer_result.substitution_examples[0][0]}' → '{wer_result.substitution_examples[0][1]}'")
+assert 0.0 <= wer_result.wer <= 1.0
+print("[WER] OK\n")

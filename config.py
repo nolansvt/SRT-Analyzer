@@ -18,6 +18,9 @@ class Config:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+    REF_SRT: str = os.getenv("REF_SRT", "")
+    HYP_SRT: str = os.getenv("HYP_SRT", "")
+
     def validate(self) -> list[str]:
         errors = []
         if not self.GLADIA_API_KEY:
