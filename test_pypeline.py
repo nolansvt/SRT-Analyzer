@@ -10,6 +10,8 @@ from analysis.comparator import compare_srt
 from transcription.gladia_client import GladiaClient
 from transcription.gladia_client import GladiaClient
 from utils.audio_converter import to_wav
+from llm.factory import get_llm_client
+
 
 load_dotenv()
 
@@ -44,7 +46,6 @@ print("[Text cleaning] OK\n")
 
 
 # --- WER 
-
 with open(config.REF_SRT, encoding="utf-8") as f:
     ref_content = f.read()
 with open(config.HYP_SRT, encoding="utf-8") as f:
@@ -70,7 +71,6 @@ assert "<span" in report.diff_html
 print("[Comparateur] OK\n")
 
 # --- Gladia client
-
 MEDIA = config.MEDIA_PATH
 
 if config.GLADIA_API_KEY and MEDIA:
@@ -87,3 +87,15 @@ else:
     generated_srt = None
     print("[Gladia] SKIPPED\n")
 
+# --- LLM 
+try:
+    llm = get_llm_client()
+    response = llm.generate(
+        f"Résultat du WER : {wer_result.wer:.1%}."
+    )
+    print(f"[LLM] Provider : {config.LLM_PROVIDER}")
+    print(f"  Réponse : {response}")
+    assert len(response) > 0
+    print("[LLM] OK\n")
+except Exception as e:
+    print(f"[LLM] ERREUR : {e}\n")
