@@ -20,6 +20,7 @@ class Config:
 
     REF_SRT: str = os.getenv("REF_SRT", "")
     HYP_SRT: str = os.getenv("HYP_SRT", "")
+    MEDIA_PATH: str = os.getenv("MEDIA_PATH", "")
 
     def validate(self) -> list[str]:
         errors = []

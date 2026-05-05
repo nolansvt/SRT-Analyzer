@@ -8,6 +8,8 @@ from analysis.srt_parser import srt_file_to_plain_text as to_text
 from config import config
 from analysis.comparator import compare_srt
 from transcription.gladia_client import GladiaClient
+from transcription.gladia_client import GladiaClient
+from utils.audio_converter import to_wav
 
 load_dotenv()
 
@@ -69,9 +71,12 @@ print("[Comparateur] OK\n")
 
 # --- Gladia client
 
-MEDIA = "/Users/polaryse/Desktop/Nolan/260401_FlyingOffshore_episode_3.mp4"
+MEDIA = config.MEDIA_PATH
 
-if config.GLADIA_API_KEY:
+if config.GLADIA_API_KEY and MEDIA:
+    wav = to_wav(MEDIA)
+    print(f"[audio_converter] WAV : {wav} ({os.path.getsize(wav) / 1e6:.1f} MB)")
+
     client = GladiaClient()
     generated_srt = client.transcribe(MEDIA)
     print(f"[Gladia] SRT généré ({len(generated_srt)} chars)")
@@ -80,5 +85,5 @@ if config.GLADIA_API_KEY:
     print("[Gladia] OK\n")
 else:
     generated_srt = None
-    print("[Gladia] SKIPPED (pas de GLADIA_API_KEY)\n")
+    print("[Gladia] SKIPPED\n")
 
