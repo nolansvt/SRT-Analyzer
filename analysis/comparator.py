@@ -29,7 +29,7 @@ def generate_diff_html(reference: str, hypothesis: str) -> str:
         elif tag == "insert":
             parts.append(f'<span style="background:#d6ffd6;padding:2px 4px;border-radius:3px">{" ".join(hyp_words[j1:j2])}</span>')
 
-    return "<p style='line-height:2;font-family:monospace'>" + " ".join(parts) + "</p>"
+    return "<p style='line-height:2;font-family:monospace;color:black'>" + " ".join(parts) + "</p>"
 
 
 def compare_srt(reference_srt: str, hypothesis_srt: str) -> ComparisonReport:

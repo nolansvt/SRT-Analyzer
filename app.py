@@ -89,12 +89,12 @@ def run_analysis(reference_srt: str, hypothesis_srt: str):
     return metrics_md, llm_analysis, report.diff_html
 
 
-def analyze_gladia(media_file, reference_srt_file):
+def analyze_gladia(media_files, reference_srt_file):
     errors = config.validate()
     if errors:
         return "\n".join(errors), "", ""
-    if media_file is None:
-        return "Veuillez uploader un fichier audio/vidéo.", "", ""
+    if not media_files:
+        return "Veuillez uploader au moins un fichier audio/vidéo.", "", ""
     if reference_srt_file is None:
         return "Veuillez uploader un fichier SRT de référence.", "", ""
 
@@ -106,7 +106,10 @@ def analyze_gladia(media_file, reference_srt_file):
 
     try:
         client = GladiaClient()
-        generated_srt = client.transcribe(media_file.name)
+        srt_parts = []
+        for media_file in media_files:
+            srt_parts.append(client.transcribe(media_file.name))
+        generated_srt = "\n\n".join(srt_parts)
     except Exception as e:
         return f"Erreur Gladia : {e}", "", ""
 
@@ -156,7 +159,7 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
         with gr.Tab("Transcription Gladia"):
             gr.Markdown("Transcrit un fichier audio/vidéo via Gladia puis compare au SRT de référence.")
             with gr.Row():
-                media_input = gr.File(label="Fichier audio / vidéo", file_types=["audio", "video"])
+                media_input = gr.File(label="Fichiers audio / vidéo",file_types=["audio", "video"],file_count="multiple")
                 srt_input = gr.File(label="SRT référence (.srt)", file_types=[".srt"])
             gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
             gladia_metrics, gladia_llm, gladia_diff = results_block()
