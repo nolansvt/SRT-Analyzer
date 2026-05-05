@@ -28,42 +28,42 @@ def srt_to_tempfile(content: str, suffix: str) -> str:
     return tmp.name
 
 
-def format_metrics(label: str, wer: WERResult) -> str:
+def format_metrics(label: str, wer: WERResult, hypothesis_label: str = "Prédit") -> str:
     lines = [
         f"## {label}\n",
-        "| Métrique | Valeur |",
-        "|---|---|",
-        f"| WER | **{wer.wer:.1%}** |",
-        f"| MER | {wer.mer:.1%} |",
-        f"| WIL | {wer.wil:.1%} |",
-        f"| Mots référence | {wer.ref_word_count} |",
-        f"| Mots prédits | {wer.hyp_word_count} |",
-        "\n| Type d'erreur | Nombre |",
-        "|---|---|",
-        f"| Substitutions | {wer.substitutions} |",
-        f"| Insertions | {wer.insertions} |",
-        f"| Suppressions | {wer.deletions} |",
+        "| Métrique | Description | Valeur |",
+        "|---|---|---|",
+        f"| WER | % de mots incorrects | **{wer.wer:.1%}** |",
+        f"| MER | % de mots de référence mal alignés | {wer.mer:.1%} |",
+        f"| WIL | % d'information perdue par mot | {wer.wil:.1%} |",
+        f"| Mots référence | Mots dans le texte corrigé | {wer.ref_word_count} |",
+        f"| Mots prédits | Mots dans la transcription | {wer.hyp_word_count} |",
+        "\n| Type d'erreur | Description | Nombre |",
+        "|---|---|---|",
+        f"| Substitutions | Mots remplacés par un autre mot | {wer.substitutions} |",
+        f"| Insertions | Mots ajoutés en trop | {wer.insertions} |",
+        f"| Suppressions | Mots manquants | {wer.deletions} |",
     ]
     if wer.substitution_examples:
-        lines.append("\n### Exemples de substitutions")
+        lines.append(f"\n### Exemples de substitutions\n| Référence | {hypothesis_label} |\n|---|---|")
         for r, h in wer.substitution_examples:
-            lines.append(f'- **"{r}"** → "{h}"')
+            lines.append(f"| {r} | {h} |")
     if wer.insertion_examples:
-        lines.append("\n### Exemples d'insertions")
+        lines.append(f"\n### Mots ajoutés par {hypothesis_label} (insertions)")
         for w in wer.insertion_examples:
-            lines.append(f'- "{w}"')
+            lines.append(f'- {w}')
     if wer.deletion_examples:
-        lines.append("\n### Exemples de suppressions")
+        lines.append("\n### Mots manquants dans la transcription (suppressions)")
         for w in wer.deletion_examples:
-            lines.append(f'- "{w}"')
+            lines.append(f'- {w}')
     return "\n".join(lines)
 
 
 def analyze_direct(reference_srt_file, hypothesis_srt_file):
     if reference_srt_file is None:
-        return "Veuillez uploader le SRT de référence.", "", ""
+        return "Veuillez uploader le SRT de référence.", ""
     if hypothesis_srt_file is None:
-        return "Veuillez uploader le SRT généré.", "", ""
+        return "Veuillez uploader le SRT généré.", ""
 
     try:
         with open(reference_srt_file.name, "r", encoding="utf-8") as f:
@@ -71,39 +71,41 @@ def analyze_direct(reference_srt_file, hypothesis_srt_file):
         with open(hypothesis_srt_file.name, "r", encoding="utf-8") as f:
             hypothesis_srt = f.read()
     except Exception as e:
-        return f"Erreur lecture fichiers : {e}", "", ""
+        return f"Erreur lecture fichiers : {e}", ""
 
     try:
         report = compare_srt(reference_srt, hypothesis_srt)
     except Exception as e:
-        return f"Erreur analyse : {e}", "", ""
+        return f"Erreur analyse : {e}", ""
 
-    return format_metrics("Métriques", report.wer_result), "", report.diff_html
+    return format_metrics("Métriques", report.wer_result, hypothesis_label="Généré"), report.diff_html
 
 
 def analyze_gladia(media_files, ref_srt_files):
-    empty = ("", "", "", "", "", None, None)
+
+    def s(msg):
+        return (msg, "", "", "", "", None, None)
 
     errors = config.validate()
     if errors:
-        yield "\n".join(errors), *empty[1:]
+        yield s("\n".join(errors))
         return
 
     if not media_files:
-        yield "⚠️ Veuillez uploader au moins un fichier audio/vidéo.", *empty[1:]
+        yield s("⚠️ Veuillez uploader au moins un fichier audio/vidéo.")
         return
     if not ref_srt_files:
-        yield "⚠️ Veuillez uploader les SRT de référence.", *empty[1:]
+        yield s("⚠️ Veuillez uploader les SRT de référence.")
         return
 
-    yield "🔍 Vérification de la correspondance des fichiers...", *empty[1:]
+    yield s("🔍 Vérification de la correspondance des fichiers...")
 
     pairs, unmatched = match_files_by_name(media_files, ref_srt_files)
     if unmatched:
-        yield f"⚠️ Aucun SRT trouvé pour : {', '.join(unmatched)}", *empty[1:]
+        yield s(f"⚠️ Aucun SRT trouvé pour : {', '.join(unmatched)}")
         return
     if len(pairs) != len(ref_srt_files):
-        yield "⚠️ Le nombre de fichiers audio et de SRT ne correspond pas.", *empty[1:]
+        yield s("⚠️ Le nombre de fichiers audio et de SRT ne correspond pas.")
         return
 
     all_gladia_srt, all_ref_srt = [], []
@@ -112,49 +114,46 @@ def analyze_gladia(media_files, ref_srt_files):
         client = GladiaClient()
         for i, (media, ref_srt_file) in enumerate(pairs):
             name = os.path.basename(media.name)
-            yield f"🎙️ Transcription Gladia ({i+1}/{len(pairs)}) : {name}...", *empty[1:]
+            yield s(f"🎙️ Transcription Gladia ({i+1}/{len(pairs)}) : {name}...")
             all_gladia_srt.append(client.transcribe(media.name))
             with open(ref_srt_file.name, "r", encoding="utf-8") as f:
                 all_ref_srt.append(f.read())
     except Exception as e:
-        yield f"❌ Erreur Gladia : {e}", *empty[1:]
+        yield s(f"❌ Erreur Gladia : {e}")
         return
 
     gladia_srt = "\n\n".join(all_gladia_srt)
     reference_srt = "\n\n".join(all_ref_srt)
 
-    yield "🤖 Correction LLM en cours...", *empty[1:]
+    yield s("🤖 Correction LLM en cours...")
 
     try:
         llm = get_llm_client()
-        llm_srt = correct_srt(gladia_srt, llm)
+        llm_srt, usage = correct_srt(gladia_srt, llm)
     except Exception as e:
-        yield f"❌ Erreur LLM : {e}", *empty[1:]
+        yield s(f"❌ Erreur LLM : {e}")
         return
 
-    yield "📊 Analyse en cours...", *empty[1:]
+    yield s("📊 Analyse en cours...")
 
     try:
         report = compare_three_way(reference_srt, gladia_srt, llm_srt)
     except Exception as e:
-        yield f"❌ Erreur analyse : {e}", *empty[1:]
+        yield s(f"❌ Erreur analyse : {e}")
         return
 
     gladia_file = srt_to_tempfile(gladia_srt, "_gladia.srt")
     llm_file = srt_to_tempfile(llm_srt, "_llm_corrected.srt")
 
-    metrics_gladia = format_metrics("Métriques Gladia vs Référence", report.wer_gladia)
-    metrics_llm = format_metrics("Métriques LLM vs Référence", report.wer_llm)
-
     yield (
-        "✅ Terminé !",
-        metrics_gladia,
-        metrics_llm,
-        report.diff_gladia_html,
-        report.diff_llm_html,
-        gladia_file,
-        llm_file,
-    )
+    f"✅ Terminé ! | {usage}",
+    format_metrics("Métriques Gladia vs Référence", report.wer_gladia, hypothesis_label="Gladia"),
+    format_metrics("Métriques LLM vs Référence", report.wer_llm, hypothesis_label="LLM"),
+    report.diff_gladia_html,
+    report.diff_llm_html,
+    gladia_file,
+    llm_file,
+)
 
 
 with gr.Blocks(title="Transcription Analyzer") as demo:
@@ -167,7 +166,9 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
             with gr.Row():
                 direct_ref = gr.File(label="SRT référence (corrigé)", file_types=[".srt"])
                 direct_hyp = gr.File(label="SRT généré (prédiction)", file_types=[".srt"])
-            direct_btn = gr.Button("Analyser", variant="primary")
+            with gr.Row():
+                direct_btn = gr.Button("Analyser", variant="primary")
+                gr.ClearButton(components=[direct_ref, direct_hyp], value="🗑️ Réinitialiser")
             with gr.Tabs():
                 with gr.Tab("Métriques"):
                     direct_metrics = gr.Markdown()
@@ -187,7 +188,9 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
                     file_types=[".srt"],
                     file_count="multiple",
                 )
-            gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
+            with gr.Row():
+                gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
+                gr.ClearButton(components=[media_input, srt_input], value="🗑️ Réinitialiser")
             status_box = gr.Textbox(label="Statut", interactive=False)
             with gr.Tabs():
                 with gr.Tab("Métriques Gladia"):
@@ -205,7 +208,7 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
     direct_btn.click(
         fn=analyze_direct,
         inputs=[direct_ref, direct_hyp],
-        outputs=[direct_metrics, gr.Textbox(visible=False), direct_diff],
+        outputs=[direct_metrics, direct_diff],
     )
 
     gladia_btn.click(
