@@ -51,11 +51,11 @@ def format_metrics(label: str, wer: WERResult, hypothesis_label: str = "Prédit"
     if wer.insertion_examples:
         lines.append(f"\n### Mots ajoutés par {hypothesis_label} (insertions)")
         for w in wer.insertion_examples:
-            lines.append(f'- {w}')
+            lines.append(f"- {w}")
     if wer.deletion_examples:
         lines.append("\n### Mots manquants dans la transcription (suppressions)")
         for w in wer.deletion_examples:
-            lines.append(f'- {w}')
+            lines.append(f"- {w}")
     return "\n".join(lines)
 
 
@@ -146,14 +146,38 @@ def analyze_gladia(media_files, ref_srt_files):
     llm_file = srt_to_tempfile(llm_srt, "_llm_corrected.srt")
 
     yield (
-    f"✅ Terminé ! | {usage}",
-    format_metrics("Métriques Gladia vs Référence", report.wer_gladia, hypothesis_label="Gladia"),
-    format_metrics("Métriques LLM vs Référence", report.wer_llm, hypothesis_label="LLM"),
-    report.diff_gladia_html,
-    report.diff_llm_html,
-    gladia_file,
-    llm_file,
-)
+        f"✅ Terminé ! | {usage}",
+        format_metrics("Métriques Gladia vs Référence", report.wer_gladia, hypothesis_label="Gladia"),
+        format_metrics("Métriques LLM vs Référence", report.wer_llm, hypothesis_label="LLM"),
+        report.diff_gladia_html,
+        report.diff_llm_html,
+        gladia_file,
+        llm_file,
+    )
+
+
+def add_media(new_files, existing):
+    existing = existing or []
+    if new_files:
+        existing_names = {os.path.basename(f.name) for f in existing}
+        new_unique = [f for f in new_files if os.path.basename(f.name) not in existing_names]
+        existing = existing + new_unique
+    names = "\n".join(f"- {os.path.basename(f.name)}" for f in existing)
+    return None, existing, names
+
+
+def add_srt(new_files, existing):
+    existing = existing or []
+    if new_files:
+        existing_names = {os.path.basename(f.name) for f in existing}
+        new_unique = [f for f in new_files if os.path.basename(f.name) not in existing_names]
+        existing = existing + new_unique
+    names = "\n".join(f"- {os.path.basename(f.name)}" for f in existing)
+    return None, existing, names
+
+
+def reset_uploads():
+    return None, None, [], [], "", ""
 
 
 with gr.Blocks(title="Transcription Analyzer") as demo:
@@ -177,20 +201,24 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
 
         with gr.Tab("Transcription Gladia"):
             gr.Markdown("Transcrit via Gladia, corrige via LLM, compare les trois.")
+            media_state = gr.State([])
+            srt_state = gr.State([])
             with gr.Row():
                 media_input = gr.File(
-                    label="Fichiers audio / vidéo",
-                    file_types=["audio", "video"],
+                    label="🎵 Glisser-déposer les fichiers audio / vidéo",
                     file_count="multiple",
                 )
                 srt_input = gr.File(
-                    label="SRT référence (même nom que le fichier audio)",
+                    label="📄 Glisser-déposer les SRT référence",
                     file_types=[".srt"],
                     file_count="multiple",
                 )
             with gr.Row():
+                media_names = gr.Textbox(label="Fichiers audio ajoutés", interactive=False, lines=3)
+                srt_names = gr.Textbox(label="SRT ajoutés", interactive=False, lines=3)
+            with gr.Row():
                 gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
-                gr.ClearButton(components=[media_input, srt_input], value="🗑️ Réinitialiser")
+                reset_btn = gr.Button("🗑️ Réinitialiser", variant="secondary")
             status_box = gr.Textbox(label="Statut", interactive=False)
             with gr.Tabs():
                 with gr.Tab("Métriques Gladia"):
@@ -211,9 +239,26 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
         outputs=[direct_metrics, direct_diff],
     )
 
+    media_input.change(
+        fn=add_media,
+        inputs=[media_input, media_state],
+        outputs=[media_input, media_state, media_names],
+    )
+
+    srt_input.change(
+        fn=add_srt,
+        inputs=[srt_input, srt_state],
+        outputs=[srt_input, srt_state, srt_names],
+    )
+
+    reset_btn.click(
+        fn=reset_uploads,
+        outputs=[media_input, srt_input, media_state, srt_state, media_names, srt_names],
+    )
+
     gladia_btn.click(
         fn=analyze_gladia,
-        inputs=[media_input, srt_input],
+        inputs=[media_state, srt_state],
         outputs=[status_box, gladia_metrics, llm_metrics, diff_gladia, diff_llm, download_gladia, download_llm],
     )
 

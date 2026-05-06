@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from analysis.srt_parser import srt_file_to_plain_text
 from analysis.wer import WERResult, compute_wer
+from utils.text_cleaning import normalize_text
 
 
 @dataclass
@@ -26,8 +27,8 @@ class ThreeWayReport:
 
 
 def generate_diff_html(reference: str, hypothesis: str) -> str:
-    ref_words = reference.split()
-    hyp_words = hypothesis.split()
+    ref_words = normalize_text(reference).split()
+    hyp_words = normalize_text(hypothesis).split()
     matcher = difflib.SequenceMatcher(None, ref_words, hyp_words)
     parts = []
 
@@ -35,12 +36,12 @@ def generate_diff_html(reference: str, hypothesis: str) -> str:
         if tag == "equal":
             parts.append(" ".join(ref_words[i1:i2]))
         elif tag == "replace":
-            parts.append(f'<span style="background:#ffd6d6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(ref_words[i1:i2])}</span>')
-            parts.append(f'<span style="background:#d6ffd6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(hyp_words[j1:j2])}</span>')
+            parts.append(f'<span style="background:#d6ffd6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(ref_words[i1:i2])}</span>')
+            parts.append(f'<span style="background:#ffd6d6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(hyp_words[j1:j2])}</span>')
         elif tag == "delete":
-            parts.append(f'<span style="background:#ffd6d6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(ref_words[i1:i2])}</span>')
+            parts.append(f'<span style="background:#d6ffd6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(ref_words[i1:i2])}</span>')
         elif tag == "insert":
-            parts.append(f'<span style="background:#d6ffd6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(hyp_words[j1:j2])}</span>')
+            parts.append(f'<span style="background:#ffd6d6;padding:2px 4px;border-radius:3px;color:#000">{" ".join(hyp_words[j1:j2])}</span>')
 
     return "<p style='line-height:2;font-family:monospace'>" + " ".join(parts) + "</p>"
 
