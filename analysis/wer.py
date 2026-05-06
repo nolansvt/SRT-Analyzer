@@ -18,7 +18,7 @@ class WERResult:
     deletion_examples: list[str] = field(default_factory=list)
 
 
-def compute_wer(reference: str, hypothesis: str, max_examples: int = 10) -> WERResult:
+def compute_wer(reference: str, hypothesis: str) -> WERResult:
     ref_clean = normalize_text(strip_srt_tags(reference))
     hyp_clean = normalize_text(strip_srt_tags(hypothesis))
 
@@ -27,14 +27,14 @@ def compute_wer(reference: str, hypothesis: str, max_examples: int = 10) -> WERR
     sub_ex, ins_ex, del_ex = [], [], []
 
     for chunk in output.alignments[0]:
-        if chunk.type == "substitute" and len(sub_ex) < max_examples:
+        if chunk.type == "substitute":
             ref_words = output.references[0][chunk.ref_start_idx : chunk.ref_end_idx]
             hyp_words = output.hypotheses[0][chunk.hyp_start_idx : chunk.hyp_end_idx]
             sub_ex.append((" ".join(ref_words), " ".join(hyp_words)))
-        elif chunk.type == "insert" and len(ins_ex) < max_examples:
+        elif chunk.type == "insert":
             hyp_words = output.hypotheses[0][chunk.hyp_start_idx : chunk.hyp_end_idx]
             ins_ex.append(" ".join(hyp_words))
-        elif chunk.type == "delete" and len(del_ex) < max_examples:
+        elif chunk.type == "delete":
             ref_words = output.references[0][chunk.ref_start_idx : chunk.ref_end_idx]
             del_ex.append(" ".join(ref_words))
 

@@ -8,7 +8,7 @@ class Config:
     GLADIA_API_KEY: str = os.getenv("GLADIA_API_KEY", "")
     GLADIA_BASE_URL: str = "https://api.gladia.io"
     GLADIA_POLL_INTERVAL: int = 3
-    GLADIA_TIMEOUT: int = 300
+    GLADIA_TIMEOUT: int = int(os.getenv("GLADIA_TIMEOUT", "600"))
 
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq").lower()
 
@@ -21,6 +21,8 @@ class Config:
     REF_SRT: str = os.getenv("REF_SRT", "")
     HYP_SRT: str = os.getenv("HYP_SRT", "")
     MEDIA_PATH: str = os.getenv("MEDIA_PATH", "")
+
+    GLADIA_VOCABULARY_PATH: str = os.getenv("GLADIA_VOCABULARY_PATH", "")
 
     def validate(self) -> list[str]:
         errors = []

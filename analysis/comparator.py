@@ -1,6 +1,4 @@
 import difflib
-import tempfile
-import os
 from dataclasses import dataclass
 from analysis.srt_parser import srt_file_to_plain_text
 from analysis.wer import WERResult, compute_wer
@@ -16,14 +14,13 @@ class ComparisonReport:
 
 
 @dataclass
-class ThreeWayReport:
+class FourWayReport:
     wer_gladia: WERResult
+    wer_gladia_cv: WERResult
     wer_llm: WERResult
     diff_gladia_html: str
+    diff_gladia_cv_html: str
     diff_llm_html: str
-    reference_text: str
-    gladia_text: str
-    llm_text: str
 
 
 def generate_diff_html(reference: str, hypothesis: str) -> str:
@@ -46,6 +43,18 @@ def generate_diff_html(reference: str, hypothesis: str) -> str:
     return "<p style='line-height:2;font-family:monospace'>" + " ".join(parts) + "</p>"
 
 
+def generate_diff_html_multi(ref_texts: list[str], hyp_texts: list[str], labels: list[str]) -> str:
+    parts = []
+    for i, (ref, hyp) in enumerate(zip(ref_texts, hyp_texts)):
+        if len(labels) > 1:
+            parts.append(
+                f"<div style='margin:16px 0 8px;padding:6px 12px;background:#2a2a2a;border-left:4px solid #888;"
+                f"color:#ccc;font-family:monospace;font-size:0.9em'>── {labels[i]} ──</div>"
+            )
+        parts.append(generate_diff_html(ref, hyp))
+    return "".join(parts)
+
+
 def compare_srt(reference_srt: str, hypothesis_srt: str) -> ComparisonReport:
     ref_text = srt_file_to_plain_text(reference_srt)
     hyp_text = srt_file_to_plain_text(hypothesis_srt)
@@ -59,16 +68,28 @@ def compare_srt(reference_srt: str, hypothesis_srt: str) -> ComparisonReport:
     )
 
 
-def compare_three_way(reference_srt: str, gladia_srt: str, llm_srt: str) -> ThreeWayReport:
-    ref_text = srt_file_to_plain_text(reference_srt)
-    gladia_text = srt_file_to_plain_text(gladia_srt)
-    llm_text = srt_file_to_plain_text(llm_srt)
-    return ThreeWayReport(
-        wer_gladia=compute_wer(ref_text, gladia_text),
-        wer_llm=compute_wer(ref_text, llm_text),
-        diff_gladia_html=generate_diff_html(ref_text, gladia_text),
-        diff_llm_html=generate_diff_html(ref_text, llm_text),
-        reference_text=ref_text,
-        gladia_text=gladia_text,
-        llm_text=llm_text,
+def compare_four_way(
+    ref_list: list[str],
+    gladia_list: list[str],
+    gladia_cv_list: list[str],
+    llm_list: list[str],
+    labels: list[str],
+) -> FourWayReport:
+    ref_texts = [srt_file_to_plain_text(s) for s in ref_list]
+    gladia_texts = [srt_file_to_plain_text(s) for s in gladia_list]
+    gladia_cv_texts = [srt_file_to_plain_text(s) for s in gladia_cv_list]
+    llm_texts = [srt_file_to_plain_text(s) for s in llm_list]
+
+    ref_combined = " ".join(ref_texts)
+    gladia_combined = " ".join(gladia_texts)
+    gladia_cv_combined = " ".join(gladia_cv_texts)
+    llm_combined = " ".join(llm_texts)
+
+    return FourWayReport(
+        wer_gladia=compute_wer(ref_combined, gladia_combined),
+        wer_gladia_cv=compute_wer(ref_combined, gladia_cv_combined),
+        wer_llm=compute_wer(ref_combined, llm_combined),
+        diff_gladia_html=generate_diff_html_multi(ref_texts, gladia_texts, labels),
+        diff_gladia_cv_html=generate_diff_html_multi(ref_texts, gladia_cv_texts, labels),
+        diff_llm_html=generate_diff_html_multi(ref_texts, llm_texts, labels),
     )
