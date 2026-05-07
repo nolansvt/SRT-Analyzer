@@ -1,8 +1,17 @@
 from llm.base import LLMClient, TokenUsage
 
 
-def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | None = None) -> tuple[str, TokenUsage]:
+def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | None = None, rag_passages: list[str] | None = None) -> tuple[str, TokenUsage]:
     print("Préparation du prompt pour la correction SRT...")
+
+    context_block = ""
+    if rag_passages:
+        context_block = (
+            "Voici des extraits déjà corrigés issus du même domaine, "
+            "comme référence orthographique et terminologique :\n"
+            "---\n" + "\n---\n".join(rag_passages) + "\n---\n\n"
+        )
+
     if reference_srt:
         prompt = f"""Tu es un expert en post-traitement de transcription audio française.
 
@@ -49,7 +58,7 @@ RÈGLES STRICTES :
 - Ne fusionne pas et ne découpes pas les segments
 - Retourne UNIQUEMENT le contenu SRT corrigé, sans explication ni balise markdown
 
-SRT à corriger :
+{context_block}SRT à corriger :
 {srt_content}"""
 
     return llm_client.generate_with_usage(prompt)

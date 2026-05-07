@@ -11,6 +11,9 @@ from analysis.srt_parser import srt_file_to_plain_text
 from llm.factory import get_llm_client
 from llm.srt_corrector import correct_srt
 from utils.vocab_extractor import extract_vocabulary_from_srts, merge_vocabularies
+from utils.rag_retriever import RAGRetriever
+
+rag = RAGRetriever("data/")
 
 
 def match_files_by_name(media_files, srt_files):
@@ -123,7 +126,7 @@ def analyze_direct(reference_srt_file, hypothesis_srt_file):
     return format_metrics("Métriques", report.wer_result, hypothesis_label="Généré"), report.diff_html
 
 
-def analyze_gladia(media_files, ref_srt_files, vocab_file=None):
+def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile="Aucun"):
 
     def s(msg):
         return (msg, "", "", "", "", "", "", None, None, None, None, None, None)
@@ -176,11 +179,13 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None):
             name = os.path.basename(media.name)
             labels.append(os.path.splitext(name)[0])
 
+            denoise = denoise_profile if denoise_profile != "Aucun" else None
+
             yield s(f"🎙️ Transcription Gladia ({i+1}/{len(pairs)}) : {name}...")
-            all_gladia_srt.append(client.transcribe(media.name))
+            all_gladia_srt.append(client.transcribe(media.name, denoise=denoise))
 
             yield s(f"🎙️ Transcription Gladia CV + vocabulaire ({i+1}/{len(pairs)}) : {name}... | {rag_status}")
-            all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary))
+            all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary, denoise=denoise))
 
             all_ref_srt.append(ref_srt_contents[i])
     except Exception as e:
@@ -204,8 +209,12 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None):
             best_srt = gladia_s if wer_g <= wer_cv else gladia_cv_s
             best_label = "Gladia" if wer_g <= wer_cv else "Gladia CV"
 
+            query_text = srt_file_to_plain_text(best_srt)
+            rag_passages = rag.find_similar(query_text, n=6)
+            print(f"[RAG] {len(rag_passages)} passages récupérés pour la correction LLM")
+
             yield s(f"🤖 Correction LLM ({i+1}/{len(pairs)}) depuis {best_label} (WER={min(wer_g, wer_cv):.1%})...")
-            corrected, usage = correct_srt(best_srt, llm)
+            corrected, usage = correct_srt(best_srt, llm, rag_passages=rag_passages)
             all_llm_srt.append(corrected)
     except Exception as e:
         yield s(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")
@@ -317,6 +326,13 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
                     lines=1,
                 )
             with gr.Row():
+                denoise_input = gr.Dropdown(
+                    label="🎛️ Réduction de bruit",
+                    choices=["Aucun", "léger", "modéré", "fort", "extrême"],
+                    value="Aucun",
+                    info="léger = voix intérieure | modéré = légère brise | fort = vent soutenu | extrême = vent fort",
+                )
+            with gr.Row():
                 gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
                 reset_btn = gr.Button("🗑️ Réinitialiser", variant="secondary")
             status_box = gr.Textbox(label="Statut", interactive=False)
@@ -373,7 +389,7 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
 
     gladia_btn.click(
         fn=analyze_gladia,
-        inputs=[media_state, srt_state, vocab_input],
+        inputs=[media_state, srt_state, vocab_input, denoise_input],
         outputs=[
             status_box,
             gladia_metrics,

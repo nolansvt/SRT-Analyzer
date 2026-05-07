@@ -4,6 +4,7 @@ import mimetypes
 import requests
 from transcription.base import BaseSTTClient
 from utils.audio_converter import to_wav
+from utils.audio_denoiser import denoise_audio
 from config import config
 
 
@@ -86,8 +87,10 @@ class GladiaClient(BaseSTTClient):
             elapsed += config.GLADIA_POLL_INTERVAL
         raise TimeoutError("Gladia transcription timed out")
 
-    def transcribe(self, file_path: str, custom_vocabulary: list[str] | None = None, on_progress=None) -> str:
+    def transcribe(self, file_path: str, custom_vocabulary: list[str] | None = None, on_progress=None, denoise: str | None = None) -> str:
         wav_path = to_wav(file_path)
+        if denoise:
+            wav_path = denoise_audio(wav_path, profile=denoise)
         audio_url = self._upload_file(wav_path)
         transcription_id = self._request_transcription(audio_url, custom_vocabulary)
         return self._poll_result(transcription_id, on_progress)

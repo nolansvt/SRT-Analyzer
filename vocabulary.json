@@ -43,6 +43,7 @@
   { "value": "Juan Kouyoumdjian",       "pronunciations": ["juan kujumjian"],                             "intensity": 0.6  },
   { "value": "polaRYSE",                "pronunciations": ["polarize", "polariz"],                        "intensity": 0.6  },
   { "value": "CDK Technologies",        "pronunciations": ["cédéka technologies"],                        "intensity": 0.6  },
+  { "value": "CDK",                     "pronunciations": ["cédéka"],                                     "intensity": 0.6  },
   { "value": "MACIF Santé Prévoyance",  "pronunciations": ["macif sante prevoyance"],                     "intensity": 0.6  },
   { "value": "Groupe Dubreuil",         "pronunciations": ["groupe du breuil"],                           "intensity": 0.6  },
   { "value": "L'Occitane en Provence",  "pronunciations": ["l'occitanne en provence"],                    "intensity": 0.6  },
@@ -97,7 +98,7 @@
   { "value": "vérins hydrauliques",     "pronunciations": ["verins hydrauliques"],                        "intensity": 0.5  },
   { "value": "couple de redressement",  "pronunciations": ["couple de redresment"],                       "intensity": 0.5  },
   { "value": "antidérive",              "pronunciations": ["anti dérive"],                                "intensity": 0.5  },
-  { "value": "giration",                "pronunciations": ["jiration"],                                   "intensity": 0.5  },
+  { "value": "giration",                "pronunciations": ["jiration"],                                   "intensity": 0.6  },
   { "value": "cunningham",              "pronunciations": ["kuningham"],                                  "intensity": 0.5  },
   { "value": "spinnaker",               "pronunciations": ["spinnakeur", "spinaker"],                     "intensity": 0.5  },
   { "value": "génois",                  "pronunciations": ["jénois"],                                     "intensity": 0.45 },
@@ -108,7 +109,7 @@
   { "value": "pataras",                 "pronunciations": ["patarasse"],                                  "intensity": 0.5  },
   { "value": "haubans",                 "pronunciations": ["aubans"],                                     "intensity": 0.45 },
   { "value": "palonnier",               "pronunciations": ["pallonier", "palomier"],                      "intensity": 0.45 },
-  { "value": "bâbord amures",           "pronunciations": ["babord amures"],                              "intensity": 0.5  },
+  { "value": "bâbord",           "pronunciations": ["babord"],                              "intensity": 0.5  },
   { "value": "tribord amures",          "pronunciations": ["tribord amure"],                              "intensity": 0.5  },
   { "value": "Code Zero",               "pronunciations": ["code zéro"],                                  "intensity": 0.5  },
   { "value": "chariot d'écoute",        "pronunciations": ["chariot d ecoute"],                           "intensity": 0.5  },
@@ -118,6 +119,7 @@
   { "value": "mâtage",                  "pronunciations": ["matage"],                                     "intensity": 0.5  },
   { "value": "mouillage",               "pronunciations": ["mouillaje"],                                  "intensity": 0.45 },
   { "value": "amarrage",                "pronunciations": ["amarage"],                                    "intensity": 0.45 },
+  { "value": "galhaubant",              "pronunciations": ["galhaubant"],                                 "intensity": 0.45 },
   { "value": "ancrage",                 "pronunciations": ["enkrage"],                                    "intensity": 0.45 },
   { "value": "au portant",              "pronunciations": ["au portan"],                                  "intensity": 0.4  },
   { "value": "lofer",                   "pronunciations": ["loffer"],                                     "intensity": 0.45 },
@@ -127,5 +129,10 @@
   { "value": "GPS",                     "pronunciations": ["jé pé esse"],                                 "intensity": 0.5  },
   { "value": "VHF",                     "pronunciations": ["vé hache effe"],                              "intensity": 0.55 },
   { "value": "carto",                   "pronunciations": ["carteau"],                                    "intensity": 0.45 },
-  { "value": "bizuth",                  "pronunciations": ["bizut"],                                      "intensity": 0.5  }
+  { "value": "bizuth",                  "pronunciations": ["bizut"],                                      "intensity": 0.5  },
+  { "value": "course au large",         "pronunciations": ["course au large"],                            "intensity": 0.5  },
+  { "value": "déhalage",                  "pronunciations": ["dealage", "dehalage", "déhalage"],          "intensity": 0.5  },
+  { "value": "le maxi edmond de rothschild", "pronunciations": ["le maxi edmond de rothschild"],          "intensity": 0.5  }
+
+
 ]
