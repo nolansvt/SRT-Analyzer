@@ -169,7 +169,7 @@ def analyze_gladia(media_files, ref_srt_files):
             best_label = "Gladia" if wer_g <= wer_cv else "Gladia CV"
 
             yield s(f"🤖 Correction LLM ({i+1}/{len(pairs)}) depuis {best_label} (WER={min(wer_g, wer_cv):.1%})...")
-            corrected, usage = correct_srt(best_srt, llm)
+            corrected, usage = correct_srt(best_srt, llm) #reference_srt=ref_s
             all_llm_srt.append(corrected)
     except Exception as e:
         yield s(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")

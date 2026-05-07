@@ -15,6 +15,7 @@ class OpenAIClient(LLMClient):
         self.model = config.OPENAI_MODEL
 
     def generate(self, prompt: str) -> str:
+        print(f"Envoi du prompt à OpenAI : {prompt[:50]}...")
         text, _ = self.generate_with_usage(prompt)
         return text
 

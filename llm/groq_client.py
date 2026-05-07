@@ -15,6 +15,7 @@ class GroqClient(LLMClient):
         self.model = config.GROQ_MODEL
 
     def generate(self, prompt: str) -> str:
+        print(f"Envoi du prompt à Groq : {prompt[:50]}...")
         text, _ = self.generate_with_usage(prompt)
         return text
 
