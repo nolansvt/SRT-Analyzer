@@ -2,7 +2,7 @@ import difflib
 from dataclasses import dataclass
 from analysis.srt_parser import srt_file_to_plain_text
 from analysis.wer import WERResult, compute_wer
-from utils.text_cleaning import normalize_text
+from utils.text_cleaning import normalize_text, normalize_format
 
 
 @dataclass
@@ -24,8 +24,8 @@ class FourWayReport:
 
 
 def generate_diff_html(reference: str, hypothesis: str) -> str:
-    ref_words = normalize_text(reference).split()
-    hyp_words = normalize_text(hypothesis).split()
+    ref_words = normalize_format(normalize_text(reference)).split()
+    hyp_words = normalize_format(normalize_text(hypothesis)).split()
     matcher = difflib.SequenceMatcher(None, ref_words, hyp_words)
     parts = []
 

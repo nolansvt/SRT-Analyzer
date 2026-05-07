@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from jiwer import process_words
-from utils.text_cleaning import normalize_text, strip_srt_tags
+from utils.text_cleaning import normalize_text, normalize_format, strip_srt_tags
 
 
 @dataclass
@@ -19,8 +19,8 @@ class WERResult:
 
 
 def compute_wer(reference: str, hypothesis: str) -> WERResult:
-    ref_clean = normalize_text(strip_srt_tags(reference))
-    hyp_clean = normalize_text(strip_srt_tags(hypothesis))
+    ref_clean = normalize_format(normalize_text(strip_srt_tags(reference)))
+    hyp_clean = normalize_format(normalize_text(strip_srt_tags(hypothesis)))
 
     output = process_words(ref_clean, hyp_clean)
 

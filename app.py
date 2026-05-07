@@ -10,6 +10,7 @@ from analysis.wer import WERResult, compute_wer
 from analysis.srt_parser import srt_file_to_plain_text
 from llm.factory import get_llm_client
 from llm.srt_corrector import correct_srt
+from utils.vocab_extractor import extract_vocabulary_from_srts, merge_vocabularies
 
 
 def match_files_by_name(media_files, srt_files):
@@ -74,6 +75,32 @@ def format_metrics(label: str, wer: WERResult, hypothesis_label: str = "Prédit"
     return "\n".join(lines)
 
 
+def load_vocabulary(vocab_file=None) -> tuple[list | None, str]:
+    if vocab_file is not None:
+        try:
+            with open(vocab_file.name, "r", encoding="utf-8") as f:
+                vocab = json.load(f)
+            return vocab, f"✅ Vocabulaire : {len(vocab)} termes (fichier uploadé)"
+        except Exception as e:
+            return None, f"⚠️ Erreur lecture vocabulaire : {e}"
+
+    path = config.resolved_vocabulary_path
+    if path and os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                vocab = json.load(f)
+            return vocab, f"✅ Vocabulaire : {len(vocab)} termes ({os.path.basename(path)})"
+        except Exception as e:
+            return None, f"⚠️ Erreur lecture vocabulaire : {e}"
+
+    return None, "ℹ️ Aucun vocabulaire — Gladia CV = Gladia base"
+
+
+def refresh_vocab_status(vocab_file):
+    _, status = load_vocabulary(vocab_file)
+    return status
+
+
 def analyze_direct(reference_srt_file, hypothesis_srt_file):
     if reference_srt_file is None:
         return "Veuillez uploader le SRT de référence.", ""
@@ -96,15 +123,13 @@ def analyze_direct(reference_srt_file, hypothesis_srt_file):
     return format_metrics("Métriques", report.wer_result, hypothesis_label="Généré"), report.diff_html
 
 
-def analyze_gladia(media_files, ref_srt_files):
+def analyze_gladia(media_files, ref_srt_files, vocab_file=None):
 
     def s(msg):
         return (msg, "", "", "", "", "", "", None, None, None, None, None, None)
 
-    custom_vocabulary = None
-    if config.GLADIA_VOCABULARY_PATH and os.path.exists(config.GLADIA_VOCABULARY_PATH):
-        with open(config.GLADIA_VOCABULARY_PATH, "r", encoding="utf-8") as f:
-            custom_vocabulary = json.load(f)
+    base_vocabulary, vocab_status = load_vocabulary(vocab_file)
+    print(f"[Vocabulaire] {vocab_status}")
 
     errors = config.validate()
     if errors:
@@ -118,7 +143,7 @@ def analyze_gladia(media_files, ref_srt_files):
         yield s("⚠️ Veuillez uploader les SRT de référence.")
         return
 
-    yield s("🔍 Vérification de la correspondance des fichiers...")
+    yield s(f"🔍 Vérification des fichiers... | {vocab_status}")
 
     pairs, unmatched = match_files_by_name(media_files, ref_srt_files)
     if unmatched:
@@ -127,6 +152,21 @@ def analyze_gladia(media_files, ref_srt_files):
     if len(pairs) != len(ref_srt_files):
         yield s("⚠️ Le nombre de fichiers audio et de SRT ne correspond pas.")
         return
+
+    ref_srt_contents = []
+    for _, ref_srt_file in pairs:
+        with open(ref_srt_file.name, "r", encoding="utf-8") as f:
+            ref_srt_contents.append(f.read())
+
+    yield s("📚 Extraction du vocabulaire depuis les SRT de référence...")
+    extracted = extract_vocabulary_from_srts(ref_srt_contents, min_freq=2)
+    if base_vocabulary:
+        custom_vocabulary, added = merge_vocabularies(base_vocabulary, extracted)
+        rag_status = f"✅ Vocabulaire : {len(base_vocabulary)} termes de base + {added} extraits des SRT = {len(custom_vocabulary)} total"
+    else:
+        custom_vocabulary = extracted
+        rag_status = f"✅ Vocabulaire extrait des SRT : {len(custom_vocabulary)} termes"
+    print(f"[RAG] {rag_status}")
 
     all_gladia_srt, all_gladia_cv_srt, all_ref_srt, labels = [], [], [], []
 
@@ -139,14 +179,10 @@ def analyze_gladia(media_files, ref_srt_files):
             yield s(f"🎙️ Transcription Gladia ({i+1}/{len(pairs)}) : {name}...")
             all_gladia_srt.append(client.transcribe(media.name))
 
-            if custom_vocabulary:
-                yield s(f"🎙️ Transcription Gladia CV ({i+1}/{len(pairs)}) : {name}...")
-                all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary))
-            else:
-                all_gladia_cv_srt.append(all_gladia_srt[-1])
+            yield s(f"🎙️ Transcription Gladia CV + vocabulaire ({i+1}/{len(pairs)}) : {name}... | {rag_status}")
+            all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary))
 
-            with open(ref_srt_file.name, "r", encoding="utf-8") as f:
-                all_ref_srt.append(f.read())
+            all_ref_srt.append(ref_srt_contents[i])
     except Exception as e:
         yield s(f"❌ Erreur Gladia : {type(e).__name__}: {e}\n{traceback.format_exc()}")
         return
@@ -169,7 +205,7 @@ def analyze_gladia(media_files, ref_srt_files):
             best_label = "Gladia" if wer_g <= wer_cv else "Gladia CV"
 
             yield s(f"🤖 Correction LLM ({i+1}/{len(pairs)}) depuis {best_label} (WER={min(wer_g, wer_cv):.1%})...")
-            corrected, usage = correct_srt(best_srt, llm) #reference_srt=ref_s
+            corrected, usage = correct_srt(best_srt, llm)
             all_llm_srt.append(corrected)
     except Exception as e:
         yield s(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")
@@ -231,6 +267,8 @@ def reset_uploads():
     return None, None, [], [], "", ""
 
 
+_, default_vocab_status = load_vocabulary()
+
 with gr.Blocks(title="Transcription Analyzer") as demo:
     gr.Markdown("# Transcription Analyzer")
 
@@ -267,6 +305,17 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
             with gr.Row():
                 media_names = gr.Textbox(label="Fichiers audio ajoutés", interactive=False, lines=3)
                 srt_names = gr.Textbox(label="SRT ajoutés", interactive=False, lines=3)
+            with gr.Row():
+                vocab_input = gr.File(
+                    label="📚 Vocabulaire personnalisé (optionnel — remplace vocabulary.json)",
+                    file_types=[".json"],
+                )
+                vocab_status = gr.Textbox(
+                    label="Statut vocabulaire",
+                    value=default_vocab_status,
+                    interactive=False,
+                    lines=1,
+                )
             with gr.Row():
                 gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
                 reset_btn = gr.Button("🗑️ Réinitialiser", variant="secondary")
@@ -311,6 +360,12 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
         outputs=[srt_input, srt_state, srt_names],
     )
 
+    vocab_input.change(
+        fn=refresh_vocab_status,
+        inputs=[vocab_input],
+        outputs=[vocab_status],
+    )
+
     reset_btn.click(
         fn=reset_uploads,
         outputs=[media_input, srt_input, media_state, srt_state, media_names, srt_names],
@@ -318,7 +373,7 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
 
     gladia_btn.click(
         fn=analyze_gladia,
-        inputs=[media_state, srt_state],
+        inputs=[media_state, srt_state, vocab_input],
         outputs=[
             status_box,
             gladia_metrics,

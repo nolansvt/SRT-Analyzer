@@ -24,6 +24,16 @@ class Config:
 
     GLADIA_VOCABULARY_PATH: str = os.getenv("GLADIA_VOCABULARY_PATH", "")
 
+    @property
+    def resolved_vocabulary_path(self) -> str:
+        path = self.GLADIA_VOCABULARY_PATH
+        if not path:
+            return ""
+        if os.path.isabs(path):
+            return path
+        base = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base, path)
+
     def validate(self) -> list[str]:
         errors = []
         if not self.GLADIA_API_KEY:
