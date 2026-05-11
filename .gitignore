@@ -2,3 +2,5 @@
 __pycache__/
 data/
 pyrightconfig.json
+/venv_whisper/
+tmp_langid/

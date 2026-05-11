@@ -119,7 +119,7 @@
   { "value": "mâtage",                  "pronunciations": ["matage"],                                     "intensity": 0.5  },
   { "value": "mouillage",               "pronunciations": ["mouillaje"],                                  "intensity": 0.45 },
   { "value": "amarrage",                "pronunciations": ["amarage"],                                    "intensity": 0.45 },
-  { "value": "galhauban",              "pronunciations": ["galhauban","galoban"],                                 "intensity": 0.6 },
+  { "value": "galhauban",              "pronunciations": ["galhauban","galoban"],                         "intensity": 0.6 },
   { "value": "ancrage",                 "pronunciations": ["enkrage"],                                    "intensity": 0.45 },
   { "value": "au portant",              "pronunciations": ["au portan"],                                  "intensity": 0.4  },
   { "value": "lofer",                   "pronunciations": ["loffer"],                                     "intensity": 0.45 },

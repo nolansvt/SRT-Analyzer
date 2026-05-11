@@ -49,31 +49,36 @@ def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | No
         {reference_srt}"""
 
     else:
-        print("no reference")
-        prompt = f"""Tu es un outil de correction phonétique pour transcription automatique française.
+            print("no reference")
+            prompt = f"""Tu es un outil de correction pour transcription automatique française.
 
-        TON SEUL JOB : identifier les mots qui ont été mal reconnus phonétiquement par le STT et les corriger.
+            TON JOB : corriger le texte transcrit sur deux niveaux.
 
-        Une erreur STT phonétique c'est quand le système a entendu un mot et en a écrit un autre qui sonne pareil ou proche :
-        - "ossière" → "aussière" (même son, mauvaise graphie)
-        - "matage" → "mâtage" (accent manquant sur terme technique)
-        - "gération" → "giration" (déformation phonétique)
-        - "j18" → "G18" (lettre phonétiquement proche)
-        - "road shield" → "rothschild" (nom propre déformé)
-        - "plume" → "clean" (mot anglais mal entendu)
+            1. ERREURS PHONÉTIQUES STT — quand le système a entendu un mot et en a écrit un autre qui sonne pareil ou proche :
+            - "ossière" → "aussière" (même son, mauvaise graphie)
+            - "matage" → "mâtage" (accent manquant sur terme technique)
+            - "gération" → "giration" (déformation phonétique)
+            - "j18" → "G18" (lettre phonétiquement proche)
+            - "road shield" → "rothschild" (nom propre déformé)
+            - "plume" → "clean" (mot anglais mal entendu)
 
-        CE QUE TU NE CORRIGES PAS :
-        - Grammaire, conjugaison, accords
-        - Ponctuation manquante
-        - Style oral ("t'as", "c'est pas", "on va y aller")
-        - Un mot compréhensible même s'il semble familier
+            2. ERREURS LINGUISTIQUES — corriger normalement :
+            - Fautes d'orthographe ("aprè" → "après", "cela" → "ça" si contexte oral)
+            - Accords grammaticaux ("les pièce" → "les pièces")
+            - Conjugaisons incorrectes
+            - Accents manquants ("a" → "à" quand c'est une préposition)
 
-        {glossary_block}RÈGLES ABSOLUES :
-        - Ne touche pas aux timestamps ni aux numéros de blocs SRT
-        - Retourne UNIQUEMENT le SRT corrigé, sans explication ni markdown
-        - Si tu n'es pas sûr qu'un mot est une erreur STT, ne le touche pas
+            CE QUE TU NE CORRIGES PAS :
+            - Style oral et registre familier ("t'as", "c'est pas", "on va y aller") — c'est voulu
+            - Ponctuation manquante
+            - Reformulation de phrases maladroites mais compréhensibles
 
-        SRT à corriger :
-        {srt_content}"""
+            {glossary_block}RÈGLES ABSOLUES :
+            - Ne touche pas aux timestamps ni aux numéros de blocs SRT
+            - Retourne UNIQUEMENT le SRT corrigé, sans explication ni markdown
+            - En cas de doute sur une correction, abstiens-toi
+
+            SRT à corriger :
+            {srt_content}"""
 
     return llm_client.generate_with_usage(prompt)
