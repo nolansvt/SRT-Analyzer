@@ -23,7 +23,7 @@ class GroqClient(LLMClient):
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+            temperature=1,
         )
         raw_usage = response.usage
         if raw_usage is None:

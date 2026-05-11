@@ -16,6 +16,21 @@ from utils.rag_retriever import RAGRetriever
 rag = RAGRetriever("data/")
 
 
+def load_glossary() -> list[str]:
+    path = config.resolved_vocabulary_path
+    if path and os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        glossary = [entry["value"] for entry in data if "value" in entry]
+        print(f"[Glossaire] {len(glossary)} termes chargés")
+        return glossary
+    print("[Glossaire] Aucun fichier trouvé")
+    return []
+
+
+glossary = load_glossary()
+
+
 def match_files_by_name(media_files, srt_files):
     srt_map = {os.path.splitext(os.path.basename(f.name))[0]: f for f in srt_files}
     pairs, unmatched = [], []
@@ -184,8 +199,9 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
             yield s(f"🎙️ Transcription Gladia ({i+1}/{len(pairs)}) : {name}...")
             all_gladia_srt.append(client.transcribe(media.name, denoise=denoise))
 
-            yield s(f"🎙️ Transcription Gladia CV + vocabulaire ({i+1}/{len(pairs)}) : {name}... | {rag_status}")
-            all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary, denoise=denoise))
+            # yield s(f"🎙️ Transcription Gladia CV + vocabulaire ({i+1}/{len(pairs)}) : {name}... | {rag_status}")
+            # all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary, denoise=denoise))
+            all_gladia_cv_srt.append(all_gladia_srt[-1])
 
             all_ref_srt.append(ref_srt_contents[i])
     except Exception as e:
@@ -214,7 +230,13 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
             print(f"[RAG] {len(rag_passages)} passages récupérés pour la correction LLM")
 
             yield s(f"🤖 Correction LLM ({i+1}/{len(pairs)}) depuis {best_label} (WER={min(wer_g, wer_cv):.1%})...")
-            corrected, usage = correct_srt(best_srt, llm, rag_passages=rag_passages)
+            
+            print("=== PASSAGES RAG ===")
+            for p in rag_passages:
+                print(p)
+            print("====================")
+            
+            corrected, usage = correct_srt(best_srt, llm, rag_passages=rag_passages, glossary=glossary or None)
             all_llm_srt.append(corrected)
     except Exception as e:
         yield s(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")
