@@ -1,23 +1,17 @@
 from llm.base import LLMClient, TokenUsage
 
 
-def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | None = None, rag_passages: list[str] | None = None, glossary: list[str] | None = None) -> tuple[str, TokenUsage]:
+def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | None = None, glossary: list[str] | None = None) -> tuple[str, TokenUsage]:
     print("Préparation du prompt pour la correction SRT...")
 
     glossary_block = ""
     if glossary:
         glossary_block = (
-            "Vocabulaire nautique de référence — orthographe exacte à respecter :\n"
+            "Ces termes nautiques existent et peuvent avoir été mal transcrits phonétiquement. "
+            "Si tu identifies un mot proche de l'un d'eux, corrige-le :\n"
             + ", ".join(glossary) + "\n\n"
         )
-
-    context_block = ""
-    if rag_passages:
-        context_block = (
-            "Voici des extraits déjà corrigés issus du même domaine, "
-            "comme référence orthographique et terminologique :\n"
-            "---\n" + "\n---\n".join(rag_passages) + "\n---\n\n"
-        )
+    print(glossary_block)
 
     if reference_srt:
         print("reference")
@@ -39,10 +33,9 @@ def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | No
         - "ça" vs "cela" → même mot, variante différente → corrige
 
         SI CE SONT DES MOTS DIFFÉRENTS → garde le texte de la TRANSCRIPTION tel quel :
-        - "ossière" vs "aussière" → mots différents → garde "ossière"
-        - "apparnisses" vs "appendices" → mots différents → garde "apparnisses"
-        - "gitane là" vs "gitana" → mots différents → garde "gitane là"
-        - "vous partez" vs "pouvez partir" → phrases différentes → garde "vous partez"
+        - "vous partez" vs "pouvez partir" → sens différent → garde "vous partez"
+        - "il arrive" vs "elle repart" → phrases différentes → garde "il arrive"
+        - "demain matin" vs "ce soir" → information différente → garde "demain matin"
 
         RÈGLES ABSOLUES :
         - Tu pars toujours de la TRANSCRIPTION
@@ -66,6 +59,7 @@ def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | No
         - "matage" → "mâtage" (accent manquant sur terme technique)
         - "gération" → "giration" (déformation phonétique)
         - "j18" → "G18" (lettre phonétiquement proche)
+        - "road shield" → "rothschild" (nom propre déformé)
         - "plume" → "clean" (mot anglais mal entendu)
 
         CE QUE TU NE CORRIGES PAS :
@@ -74,13 +68,12 @@ def correct_srt(srt_content: str, llm_client: LLMClient, reference_srt: str | No
         - Style oral ("t'as", "c'est pas", "on va y aller")
         - Un mot compréhensible même s'il semble familier
 
-        {glossary_block}{context_block}RÈGLES ABSOLUES :
+        {glossary_block}RÈGLES ABSOLUES :
         - Ne touche pas aux timestamps ni aux numéros de blocs SRT
         - Retourne UNIQUEMENT le SRT corrigé, sans explication ni markdown
         - Si tu n'es pas sûr qu'un mot est une erreur STT, ne le touche pas
 
         SRT à corriger :
         {srt_content}"""
-        
 
     return llm_client.generate_with_usage(prompt)

@@ -144,7 +144,7 @@ def analyze_direct(reference_srt_file, hypothesis_srt_file):
 def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile="Aucun"):
 
     def s(msg):
-        return (msg, "", "", "", "", "", "", None, None, None, None, None, None)
+        return (msg, "", "", "", "", "", "", "", None, None, None, None, None, None)
 
     base_vocabulary, vocab_status = load_vocabulary(vocab_file)
     print(f"[Vocabulaire] {vocab_status}")
@@ -236,7 +236,7 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
                 print(p)
             print("====================")
             
-            corrected, usage = correct_srt(best_srt, llm, rag_passages=rag_passages, glossary=glossary or None)
+            corrected, usage = correct_srt(best_srt, llm, glossary=glossary or None)
             all_llm_srt.append(corrected)
     except Exception as e:
         yield s(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")
@@ -265,6 +265,7 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
         report.diff_gladia_html,
         report.diff_gladia_cv_html,
         report.diff_llm_html,
+        report.diff_llm_vs_gladia_html,
         gladia_file,
         gladia_cv_file,
         llm_file,
@@ -371,6 +372,8 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
                     diff_gladia_cv = gr.HTML()
                 with gr.Tab("Diff LLM vs Référence"):
                     diff_llm = gr.HTML()
+                with gr.Tab("Diff LLM vs Gladia"):
+                    diff_llmVSgladia = gr.HTML()
             with gr.Row():
                 download_gladia = gr.File(label="SRT Gladia")
                 download_gladia_cv = gr.File(label="SRT Gladia CV")
@@ -420,6 +423,7 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
             diff_gladia,
             diff_gladia_cv,
             diff_llm,
+            diff_llmVSgladia,
             download_gladia,
             download_gladia_cv,
             download_llm,

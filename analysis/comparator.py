@@ -21,6 +21,7 @@ class FourWayReport:
     diff_gladia_html: str
     diff_gladia_cv_html: str
     diff_llm_html: str
+    diff_llm_vs_gladia_html: str
 
 
 def generate_diff_html(reference: str, hypothesis: str) -> str:
@@ -92,4 +93,5 @@ def compare_four_way(
         diff_gladia_html=generate_diff_html_multi(ref_texts, gladia_texts, labels),
         diff_gladia_cv_html=generate_diff_html_multi(ref_texts, gladia_cv_texts, labels),
         diff_llm_html=generate_diff_html_multi(ref_texts, llm_texts, labels),
+        diff_llm_vs_gladia_html=generate_diff_html_multi(gladia_texts, llm_texts, labels),
     )
