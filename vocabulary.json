@@ -109,11 +109,7 @@
   { "value": "pataras",                 "pronunciations": ["patarasse"],                                  "intensity": 0.5  },
   { "value": "haubans",                 "pronunciations": ["aubans"],                                     "intensity": 0.45 },
   { "value": "palonnier",               "pronunciations": ["pallonier", "palomier"],                      "intensity": 0.45 },
-<<<<<<< HEAD
   { "value": "bâbord",                  "pronunciations": ["babord"],                                     "intensity": 0.5  },
-=======
-  { "value": "bâbord",           "pronunciations": ["babord"],                              "intensity": 0.5  },
->>>>>>> parent of aa0250a (fix: changes vocabulary)
   { "value": "tribord amures",          "pronunciations": ["tribord amure"],                              "intensity": 0.5  },
   { "value": "Code Zero",               "pronunciations": ["code zéro"],                                  "intensity": 0.5  },
   { "value": "chariot d'écoute",        "pronunciations": ["chariot d ecoute"],                           "intensity": 0.5  },
@@ -140,4 +136,3 @@
 
 
 ]
-
