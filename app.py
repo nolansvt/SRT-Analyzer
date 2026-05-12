@@ -143,32 +143,51 @@ def analyze_direct(reference_srt_file, hypothesis_srt_file):
 
 def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile="Aucun"):
 
-    def s(msg):
-        return (msg, "", "", "", "", "", "", "", None, None, None, None, None, None)
+    logs = []
+
+    def log(msg):
+        logs.append(msg)
+        print(msg)
+        return "\n".join(logs)
+
+    ui = {
+        "gladia_metrics": "", "gladia_cv_metrics": "", "llm_metrics": "",
+        "diff_gladia": "", "diff_gladia_cv": "", "diff_llm": "", "diff_llm_vs_gladia": "",
+        "dl_gladia": None, "dl_gladia_cv": None, "dl_llm": None,
+        "dl_sub": None, "dl_ins": None, "dl_del": None,
+    }
+
+    def emit(msg):
+        return (
+            log(msg),
+            ui["gladia_metrics"], ui["gladia_cv_metrics"], ui["llm_metrics"],
+            ui["diff_gladia"], ui["diff_gladia_cv"], ui["diff_llm"], ui["diff_llm_vs_gladia"],
+            ui["dl_gladia"], ui["dl_gladia_cv"], ui["dl_llm"],
+            ui["dl_sub"], ui["dl_ins"], ui["dl_del"],
+        )
 
     base_vocabulary, vocab_status = load_vocabulary(vocab_file)
-    print(f"[Vocabulaire] {vocab_status}")
 
     errors = config.validate()
     if errors:
-        yield s("\n".join(errors))
+        yield emit("\n".join(errors))
         return
 
     if not media_files:
-        yield s("⚠️ Veuillez uploader au moins un fichier audio/vidéo.")
+        yield emit("⚠️ Veuillez uploader au moins un fichier audio/vidéo.")
         return
     if not ref_srt_files:
-        yield s("⚠️ Veuillez uploader les SRT de référence.")
+        yield emit("⚠️ Veuillez uploader les SRT de référence.")
         return
 
-    yield s(f"🔍 Vérification des fichiers... | {vocab_status}")
+    yield emit(f"🔍 Vérification des fichiers... | {vocab_status}")
 
     pairs, unmatched = match_files_by_name(media_files, ref_srt_files)
     if unmatched:
-        yield s(f"⚠️ Aucun SRT trouvé pour : {', '.join(unmatched)}")
+        yield emit(f"⚠️ Aucun SRT trouvé pour : {', '.join(unmatched)}")
         return
     if len(pairs) != len(ref_srt_files):
-        yield s("⚠️ Le nombre de fichiers audio et de SRT ne correspond pas.")
+        yield emit("⚠️ Le nombre de fichiers audio et de SRT ne correspond pas.")
         return
 
     ref_srt_contents = []
@@ -176,15 +195,14 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
         with open(ref_srt_file.name, "r", encoding="utf-8") as f:
             ref_srt_contents.append(f.read())
 
-    yield s("📚 Extraction du vocabulaire depuis les SRT de référence...")
+    yield emit("📚 Extraction du vocabulaire depuis les SRT de référence...")
     extracted = extract_vocabulary_from_srts(ref_srt_contents, min_freq=2)
     if base_vocabulary:
         custom_vocabulary, added = merge_vocabularies(base_vocabulary, extracted)
-        rag_status = f"✅ Vocabulaire : {len(base_vocabulary)} termes de base + {added} extraits des SRT = {len(custom_vocabulary)} total"
+        yield emit(f"✅ Vocabulaire : {len(base_vocabulary)} termes de base + {added} extraits des SRT = {len(custom_vocabulary)} total")
     else:
         custom_vocabulary = extracted
-        rag_status = f"✅ Vocabulaire extrait des SRT : {len(custom_vocabulary)} termes"
-    print(f"[RAG] {rag_status}")
+        yield emit(f"✅ Vocabulaire extrait des SRT : {len(custom_vocabulary)} termes")
 
     all_gladia_srt, all_gladia_cv_srt, all_ref_srt, labels = [], [], [], []
 
@@ -193,25 +211,30 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
         for i, (media, ref_srt_file) in enumerate(pairs):
             name = os.path.basename(media.name)
             labels.append(os.path.splitext(name)[0])
-
             denoise = denoise_profile if denoise_profile != "Aucun" else None
 
-            yield s(f"🎙️ Transcription Gladia ({i+1}/{len(pairs)}) : {name}...")
-            all_gladia_srt.append(client.transcribe(media.name, denoise=denoise))
-
-            # yield s(f"🎙️ Transcription Gladia CV + vocabulaire ({i+1}/{len(pairs)}) : {name}... | {rag_status}")
+            yield emit(f"🎙️ [{i+1}/{len(pairs)}] Transcription Gladia en cours : {name}...")
+            gladia_srt = client.transcribe(media.name, denoise=denoise)
+            all_gladia_srt.append(gladia_srt)
+            # yield emit(f"🎙️ Transcription Gladia CV + vocabulaire ({i+1}/{len(pairs)}) : {name}...")
             # all_gladia_cv_srt.append(client.transcribe(media.name, custom_vocabulary, denoise=denoise))
-            all_gladia_cv_srt.append(all_gladia_srt[-1])
-
+            all_gladia_cv_srt.append(gladia_srt)
             all_ref_srt.append(ref_srt_contents[i])
+
+            ref_text = srt_file_to_plain_text(ref_srt_contents[i])
+            wer_g = compute_wer(ref_text, srt_file_to_plain_text(gladia_srt))
+            partial_report = compare_four_way(all_ref_srt, all_gladia_srt, all_gladia_cv_srt, all_gladia_srt, labels)
+            ui["gladia_metrics"] = format_metrics(f"Métriques Gladia vs Référence ({i+1}/{len(pairs)} fichiers)", partial_report.wer_gladia, hypothesis_label="Gladia")
+            ui["dl_gladia"] = srt_to_tempfile("\n\n".join(all_gladia_srt), "_gladia.srt")
+            yield emit(f"✅ [{i+1}/{len(pairs)}] Gladia terminé : {name} | WER={wer_g.wer:.1%} ({wer_g.ref_word_count} mots ref, {wer_g.substitutions} sub, {wer_g.insertions} ins, {wer_g.deletions} del)")
     except Exception as e:
-        yield s(f"❌ Erreur Gladia : {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        yield emit(f"❌ Erreur Gladia : {type(e).__name__}: {e}\n{traceback.format_exc()}")
         return
 
     try:
         llm = get_llm_client()
     except Exception as e:
-        yield s(f"❌ Erreur LLM init : {type(e).__name__}: {e}")
+        yield emit(f"❌ Erreur LLM init : {type(e).__name__}: {e}")
         return
 
     all_llm_srt = []
@@ -225,54 +248,45 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
             best_srt = gladia_s if wer_g <= wer_cv else gladia_cv_s
             best_label = "Gladia" if wer_g <= wer_cv else "Gladia CV"
 
-            query_text = srt_file_to_plain_text(best_srt)
-            rag_passages = rag.find_similar(query_text, n=6)
-            print(f"[RAG] {len(rag_passages)} passages récupérés pour la correction LLM")
+            rag_passages = rag.find_similar(srt_file_to_plain_text(best_srt), n=6)
+            yield emit(f"🤖 [{i+1}/{len(pairs)}] Correction LLM depuis {best_label} (WER={min(wer_g, wer_cv):.1%}) | RAG : {len(rag_passages)} passages récupérés...")
 
-            yield s(f"🤖 Correction LLM ({i+1}/{len(pairs)}) depuis {best_label} (WER={min(wer_g, wer_cv):.1%})...")
-            
-            print("=== PASSAGES RAG ===")
-            for p in rag_passages:
-                print(p)
-            print("====================")
-            
             corrected, usage = correct_srt(best_srt, llm, glossary=glossary or None)
             all_llm_srt.append(corrected)
+
+            ref_text = srt_file_to_plain_text(ref_s)
+            wer_llm = compute_wer(ref_text, srt_file_to_plain_text(corrected))
+            partial_report = compare_four_way(all_ref_srt[:i+1], all_gladia_srt[:i+1], all_gladia_cv_srt[:i+1], all_llm_srt, labels[:i+1])
+            ui["llm_metrics"] = format_metrics(f"Métriques LLM vs Référence ({i+1}/{len(pairs)} fichiers)", partial_report.wer_llm, hypothesis_label="LLM")
+            ui["dl_llm"] = srt_to_tempfile("\n\n".join(all_llm_srt), "_llm.srt")
+            yield emit(f"✅ [{i+1}/{len(pairs)}] LLM terminé | WER={wer_llm.wer:.1%} ({wer_llm.substitutions} sub, {wer_llm.insertions} ins, {wer_llm.deletions} del) | {usage}")
     except Exception as e:
-        yield s(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        yield emit(f"❌ Erreur LLM : {type(e).__name__}: {e}\n{traceback.format_exc()}")
         return
 
-    yield s("📊 Analyse en cours...")
+    yield emit("📊 Calcul des métriques finales et génération des diffs...")
 
     try:
         report = compare_four_way(all_ref_srt, all_gladia_srt, all_gladia_cv_srt, all_llm_srt, labels)
     except Exception as e:
-        yield s(f"❌ Erreur analyse : {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        yield emit(f"❌ Erreur analyse : {type(e).__name__}: {e}\n{traceback.format_exc()}")
         return
 
-    gladia_file = srt_to_tempfile("\n\n".join(all_gladia_srt), "_gladia.srt")
-    gladia_cv_file = srt_to_tempfile("\n\n".join(all_gladia_cv_srt), "_gladia_cv.srt")
-    llm_file = srt_to_tempfile("\n\n".join(all_llm_srt), "_llm.srt")
-    sub_file = substitutions_to_tempfile(report.wer_gladia.substitution_examples)
-    ins_file = list_to_tempfile(report.wer_gladia.insertion_examples, "_insertions.txt")
-    del_file = list_to_tempfile(report.wer_gladia.deletion_examples, "_suppressions.txt")
+    ui["gladia_metrics"] = format_metrics("Métriques Gladia vs Référence", report.wer_gladia, hypothesis_label="Gladia")
+    ui["gladia_cv_metrics"] = format_metrics("Métriques Gladia CV vs Référence", report.wer_gladia_cv, hypothesis_label="Gladia CV")
+    ui["llm_metrics"] = format_metrics("Métriques LLM vs Référence", report.wer_llm, hypothesis_label="LLM")
+    ui["diff_gladia"] = report.diff_gladia_html
+    ui["diff_gladia_cv"] = report.diff_gladia_cv_html
+    ui["diff_llm"] = report.diff_llm_html
+    ui["diff_llm_vs_gladia"] = report.diff_llm_vs_gladia_html
+    ui["dl_gladia"] = srt_to_tempfile("\n\n".join(all_gladia_srt), "_gladia.srt")
+    ui["dl_gladia_cv"] = srt_to_tempfile("\n\n".join(all_gladia_cv_srt), "_gladia_cv.srt")
+    ui["dl_llm"] = srt_to_tempfile("\n\n".join(all_llm_srt), "_llm.srt")
+    ui["dl_sub"] = substitutions_to_tempfile(report.wer_gladia.substitution_examples)
+    ui["dl_ins"] = list_to_tempfile(report.wer_gladia.insertion_examples, "_insertions.txt")
+    ui["dl_del"] = list_to_tempfile(report.wer_gladia.deletion_examples, "_suppressions.txt")
 
-    yield (
-        f"✅ Terminé ! | {usage}",
-        format_metrics("Métriques Gladia vs Référence", report.wer_gladia, hypothesis_label="Gladia"),
-        format_metrics("Métriques Gladia CV vs Référence", report.wer_gladia_cv, hypothesis_label="Gladia CV"),
-        format_metrics("Métriques LLM vs Référence", report.wer_llm, hypothesis_label="LLM"),
-        report.diff_gladia_html,
-        report.diff_gladia_cv_html,
-        report.diff_llm_html,
-        report.diff_llm_vs_gladia_html,
-        gladia_file,
-        gladia_cv_file,
-        llm_file,
-        sub_file,
-        ins_file,
-        del_file,
-    )
+    yield emit(f"✅ Terminé ! Gladia WER={report.wer_gladia.wer:.1%} | LLM WER={report.wer_llm.wer:.1%} | {usage}")
 
 
 def add_media(new_files, existing):
@@ -358,7 +372,7 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
             with gr.Row():
                 gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
                 reset_btn = gr.Button("🗑️ Réinitialiser", variant="secondary")
-            status_box = gr.Textbox(label="Statut", interactive=False)
+            status_box = gr.Textbox(label="Statut", interactive=False, lines=12, max_lines=50)
             with gr.Tabs():
                 with gr.Tab("Métriques Gladia"):
                     gladia_metrics = gr.Markdown()

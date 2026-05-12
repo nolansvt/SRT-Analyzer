@@ -1,11 +1,11 @@
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
 from faster_whisper import WhisperModel
 from langdetect import detect_langs, DetectorFactory
 from speechbrain.inference import EncoderClassifier
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 import torch
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 DetectorFactory.seed = 0
 
@@ -51,4 +51,4 @@ def detect_languages_in_audio(audio_path: str) -> set:
 
     return langs
 
-print(detect_languages_in_audio("230112_polaRYSE_Holcim-PRB_Bapteme.wav"))
+print(detect_languages_in_audio("audio_test/230112_polaRYSE_Holcim-PRB_Bapteme.wav"))
