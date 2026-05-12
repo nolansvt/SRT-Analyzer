@@ -4,3 +4,4 @@ data/
 pyrightconfig.json
 /venv_whisper/
 tmp_langid/
+audio_test/
