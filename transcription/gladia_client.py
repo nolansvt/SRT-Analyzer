@@ -35,7 +35,7 @@ class GladiaClient(BaseSTTClient):
         url = f"{self.base_url}/v2/transcription"
         payload = {
             "audio_url": audio_url,
-            "language_config": {"languages": ["fr"], "code_switching": False},
+            "language_config": {"code_switching": True}
         }
         if custom_vocabulary:
             payload["custom_vocabulary"] = custom_vocabulary
