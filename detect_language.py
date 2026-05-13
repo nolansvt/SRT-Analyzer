@@ -56,4 +56,6 @@ def detect_languages_in_audio(audio_path: str) -> set:
 
     return langs
 
-print(detect_languages_in_audio("audio_test/IMOCA_STOPOVER_4_ITAJAI.wav"))
+audio_path = "audio_test/240104_polaRYSE_GITANA_Brest22.wav"
+print(audio_path)
+print(detect_languages_in_audio(audio_path))

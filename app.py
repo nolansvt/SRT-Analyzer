@@ -211,7 +211,8 @@ def analyze_gladia(media_files, ref_srt_files, vocab_file=None, denoise_profile=
         for i, (media, ref_srt_file) in enumerate(pairs):
             name = os.path.basename(media.name)
             labels.append(os.path.splitext(name)[0])
-            denoise = denoise_profile if denoise_profile != "Aucun" else None
+
+            denoise = None if denoise_profile == "Aucun" else denoise_profile
 
             yield emit(f"🎙️ [{i+1}/{len(pairs)}] Transcription Gladia en cours : {name}...")
             gladia_srt = client.transcribe(media.name, denoise=denoise)
@@ -365,9 +366,9 @@ with gr.Blocks(title="Transcription Analyzer") as demo:
             with gr.Row():
                 denoise_input = gr.Dropdown(
                     label="🎛️ Réduction de bruit",
-                    choices=["Aucun", "léger", "modéré", "fort", "extrême"],
+                    choices=["Aucun", "Auto", "léger", "modéré", "fort", "extrême"],
                     value="Aucun",
-                    info="léger = voix intérieure | modéré = légère brise | fort = vent soutenu | extrême = vent fort",
+                    info="Auto = détecte le niveau de bruit | léger = voix intérieure | modéré = légère brise | fort = vent soutenu | extrême = vent fort",
                 )
             with gr.Row():
                 gladia_btn = gr.Button("Transcrire & Analyser", variant="primary")
