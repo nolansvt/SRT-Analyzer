@@ -104,4 +104,5 @@ def denoise_audio(wav_path: str, profile: str = "modéré") -> str:
     original_mb = os.path.getsize(wav_path) / 1e6
     out_mb = os.path.getsize(out_path) / 1e6
     print(f"[denoiser] OK : {original_mb:.1f} MB → {out_mb:.1f} MB")
+    print(f"[denoiser] Fichier généré : {out_path}")
     return out_path
