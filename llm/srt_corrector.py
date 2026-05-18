@@ -1,4 +1,4 @@
-from base import LLMClient, TokenUsage
+from llm.base import LLMClient, TokenUsage
 
 def _build_prompt(srt_chunk: str, glossary_block: str) -> str:
     return f"""Tu es un outil de correction pour transcription automatique française.
