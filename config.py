@@ -5,17 +5,17 @@ load_dotenv()
 
 
 class Config:
-    GLADIA_API_KEY: str = os.getenv("GLADIA_API_KEY", "")
+    GLADIA_API_KEY: str = os.getenv("GLADIA_API_KEY", "").strip()
     GLADIA_BASE_URL: str = "https://api.gladia.io"
     GLADIA_POLL_INTERVAL: int = 3
     GLADIA_TIMEOUT: int = int(os.getenv("GLADIA_TIMEOUT", "600"))
 
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq").lower()
 
-    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "").strip()
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "").strip()
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
     REF_SRT: str = os.getenv("REF_SRT", "")
